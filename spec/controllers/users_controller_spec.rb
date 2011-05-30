@@ -13,7 +13,7 @@ describe UsersController do
       end
     end
 
-    describe "for signed-in users" do
+    describe "for signed-in non-admin users" do
 
       before(:each) do
         @user = test_sign_in(Factory(:user))
@@ -43,6 +43,14 @@ describe UsersController do
         end
       end
 
+      it "should not have a delete link for each user" do
+        get :index
+        @users[0..2].each do |user|
+          response.should_not 
+            have_selector("a", :title => "Delete #{user.name}")
+        end
+      end        
+
       it "should paginate users" do
         get :index
         response.should have_selector("div.pagination")
@@ -53,6 +61,28 @@ describe UsersController do
                                            :content => "Next")
       end
     end
+
+    describe "for signed-in admin user" do
+      
+      before(:each) do
+        @user = Factory(:user, :name => "Admin", :email => "admin@example.com",
+                               :admin => true)
+        user1 = Factory(:user, :name => "User1", :email => "user1@example.com")
+        user2 = Factory(:user, :name => "User2", :email => "user2@example.com")
+
+        @users = [@user, user1, user2]
+        test_sign_in(@user)
+      end
+
+      it "admins should not have a delete link, others should" do
+        get :index
+        response.should_not have_selector("a", :title => "Delete Admin")
+        response.should     have_selector("a", :title => "Delete User1")
+        response.should     have_selector("a", :title => "Delete User2")
+      end
+
+    end    
+
   end
 
   describe "GET 'show'" do
@@ -90,15 +120,33 @@ describe UsersController do
 
   describe "GET 'new'" do
 
-    it "should be successful" do
-      get :new
-      response.should be_success
+    describe "for non-signed-in users" do
+
+      it "should be successful" do
+        get :new
+        response.should be_success
+      end
+
+      it "should have the right title" do
+        get :new
+        response.should have_selector("title", :content => "Sign up")
+      end
     end
 
-    it "should have the right title" do
-      get :new
-      response.should have_selector("title", :content => "Sign up")
+    describe "for signed-in users" do
+
+      before(:each) do
+        @user = Factory(:user)
+        test_sign_in(@user)
+      end
+
+      it "should redirect to root" do
+        get :new, :id => @user
+        response.should redirect_to(root_path)
+      end
+
     end
+
   end
 
   describe "POST 'create'" do
